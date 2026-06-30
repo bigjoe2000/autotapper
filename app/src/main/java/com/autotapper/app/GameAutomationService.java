@@ -6,6 +6,7 @@ import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.os.Handler;
@@ -20,6 +21,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -31,6 +33,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class GameAutomationService extends AccessibilityService {
@@ -55,6 +58,9 @@ public class GameAutomationService extends AccessibilityService {
     private LinearLayout prevNextRow;
     private ImageButton btnPrev;
     private ImageButton btnNext;
+
+    private String currentProfileName = null;
+    private String currentForegroundPackage = null;
 
     // Active pin & delay editor
     private int activeIndex = -1;
@@ -140,6 +146,8 @@ public class GameAutomationService extends AccessibilityService {
                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN |
                 WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED;
 
+        attachDelayEditorDragListener();
+
         etDelay = delayEditorView.findViewById(R.id.et_delay);
         etDelay.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -159,6 +167,30 @@ public class GameAutomationService extends AccessibilityService {
             if (activeIndex >= 0 && activeIndex < tapTargets.size()) {
                 removePin(tapTargets.get(activeIndex));
             }
+        });
+    }
+
+    private void attachDelayEditorDragListener() {
+        View handle = delayEditorView.findViewById(R.id.drag_handle);
+        final float[] startTouchX = {0};
+        final float[] startTouchY = {0};
+        final int[] startParamsX = {0};
+        final int[] startParamsY = {0};
+        handle.setOnTouchListener((v, event) -> {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    startTouchX[0] = event.getRawX();
+                    startTouchY[0] = event.getRawY();
+                    startParamsX[0] = delayEditorParams.x;
+                    startParamsY[0] = delayEditorParams.y;
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    delayEditorParams.x = startParamsX[0] + (int) (event.getRawX() - startTouchX[0]);
+                    delayEditorParams.y = startParamsY[0] + (int) (event.getRawY() - startTouchY[0]);
+                    if (delayEditorAdded) windowManager.updateViewLayout(delayEditorView, delayEditorParams);
+                    return true;
+            }
+            return false;
         });
     }
 
@@ -184,8 +216,15 @@ public class GameAutomationService extends AccessibilityService {
             return;
         }
         WindowManager.LayoutParams pinParams = pinParamsList.get(activeIndex);
-        delayEditorParams.x = pinParams.x;
-        delayEditorParams.y = pinParams.y + dpToPx(60);
+
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        // Keep editor clear of the right sidebar (~56dp wide) plus a small gap
+        int rightBound = screenWidth - dpToPx(72) - dpToPx(210);
+        int x = Math.max(0, Math.min(pinParams.x, rightBound));
+        int y = pinParams.y + dpToPx(60);
+
+        delayEditorParams.x = x;
+        delayEditorParams.y = y;
         showDelayEditor();
     }
 
@@ -426,47 +465,220 @@ public class GameAutomationService extends AccessibilityService {
     // -------------------------------------------------------------------------
 
     private void showSettingsDialog() {
+        String profileDisplay = currentProfileName != null ? currentProfileName : "(none)";
+        String appDisplay = currentForegroundPackage != null
+                ? getAppDisplayName(currentForegroundPackage) : "(none)";
+
+        String msg = "Profile:  " + profileDisplay + "\nApp:  " + appDisplay;
+
+        List<String> options = new ArrayList<>();
+        options.add(currentProfileName != null ? "Save  —  " + currentProfileName : "Save");
+        options.add("New profile");
+        options.add("Load profile");
+
         AlertDialog.Builder builder = new AlertDialog.Builder(this,
                 android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
         builder.setTitle("Profiles");
-
-        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_settings, null);
-        EditText profileNameInput = dialogView.findViewById(R.id.et_profile_name);
-
-        builder.setView(dialogView);
-        builder.setPositiveButton("Save", (dialog, which) -> {
-            String name = profileNameInput.getText().toString().trim();
-            if (!name.isEmpty()) {
-                saveProfile(name);
-                Toast.makeText(this, "Saved: " + name, Toast.LENGTH_SHORT).show();
+        builder.setMessage(msg);
+        builder.setItems(options.toArray(new String[0]), (dialog, which) -> {
+            if (which == 0) {
+                if (currentProfileName != null) {
+                    saveProfile(currentProfileName, getProfilePackage(currentProfileName));
+                    Toast.makeText(this, "Saved: " + currentProfileName, Toast.LENGTH_SHORT).show();
+                } else {
+                    showNewProfileDialog();
+                }
+            } else if (which == 1) {
+                showNewProfileDialog();
+            } else if (which == 2) {
+                showLoadProfileDialog();
             }
         });
-        builder.setNegativeButton("Load", (dialog, which) -> {
-            String name = profileNameInput.getText().toString().trim();
-            if (!name.isEmpty()) loadProfile(name);
-        });
-        builder.setNeutralButton("Cancel", null);
+        builder.setNegativeButton("Cancel", null);
 
         AlertDialog dialog = builder.create();
         dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
         dialog.show();
     }
 
-    private void saveProfile(String name) {
+    private void showNewProfileDialog() {
+        // Build a small layout: name input + optional app-link checkbox
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        int pad = dpToPx(16);
+        layout.setPadding(pad, dpToPx(8), pad, 0);
+
+        EditText input = new EditText(this);
+        input.setHint("Profile name");
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        layout.addView(input);
+
+        CheckBox cbLink = new CheckBox(this);
+        if (currentForegroundPackage != null) {
+            cbLink.setText("Link to  " + getAppDisplayName(currentForegroundPackage));
+            cbLink.setChecked(true);
+            layout.addView(cbLink);
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this,
+                android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
+        builder.setTitle("New Profile");
+        builder.setView(layout);
+        builder.setPositiveButton("Create", (dialog, which) -> {
+            String name = input.getText().toString().trim();
+            if (!name.isEmpty()) {
+                String pkg = (cbLink.getParent() != null && cbLink.isChecked())
+                        ? currentForegroundPackage : null;
+                saveProfile(name, pkg);
+                Toast.makeText(this, "Created: " + name, Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+
+        AlertDialog dialog = builder.create();
+        dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+        dialog.show();
+    }
+
+    private void showLoadProfileDialog() {
+        // Build display list: profiles for current app starred at top, rest below
+        List<String[]> all = getAllProfiles(); // {name, pkg}
+        if (all.isEmpty()) {
+            Toast.makeText(this, "No saved profiles", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<String> displayItems = new ArrayList<>();
+        List<String> nameItems = new ArrayList<>();
+        for (String[] p : all) {
+            boolean forCurrentApp = currentForegroundPackage != null
+                    && currentForegroundPackage.equals(p[1]);
+            String label = (forCurrentApp ? "★  " : "    ") + p[0];
+            if (p[1] != null && !forCurrentApp) label += "  (" + getAppDisplayName(p[1]) + ")";
+            displayItems.add(label);
+            nameItems.add(p[0]);
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this,
+                android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
+        builder.setTitle("Profiles");
+        builder.setItems(displayItems.toArray(new String[0]),
+                (dialog, which) -> showProfileActionDialog(nameItems.get(which)));
+        builder.setNegativeButton("Cancel", null);
+
+        AlertDialog dialog = builder.create();
+        dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+        dialog.show();
+    }
+
+    private void showProfileActionDialog(String name) {
+        String profilePkg = getProfilePackage(name);
+        boolean linkedToCurrentApp = currentForegroundPackage != null
+                && currentForegroundPackage.equals(profilePkg);
+        boolean canLink = currentForegroundPackage != null;
+
+        List<String> actions = new ArrayList<>();
+        actions.add("Load");
+        if (canLink) {
+            actions.add(linkedToCurrentApp
+                    ? "Unlink from  " + getAppDisplayName(currentForegroundPackage)
+                    : "Link to  " + getAppDisplayName(currentForegroundPackage));
+        }
+        actions.add("Delete");
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this,
+                android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
+        builder.setTitle(name);
+        builder.setItems(actions.toArray(new String[0]), (dialog, which) -> {
+            String action = actions.get(which);
+            if (action.equals("Load")) {
+                loadProfile(name);
+            } else if (action.startsWith("Link")) {
+                relinkProfile(name, currentForegroundPackage);
+            } else if (action.startsWith("Unlink")) {
+                relinkProfile(name, null);
+            } else if (action.equals("Delete")) {
+                deleteProfile(name);
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+
+        AlertDialog dialog = builder.create();
+        dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+        dialog.show();
+    }
+
+    private void deleteProfile(String name) {
+        getSharedPreferences("autotapper_profiles", Context.MODE_PRIVATE)
+                .edit().remove("profile_" + name).apply();
+        if (name.equals(currentProfileName)) currentProfileName = null;
+        Toast.makeText(this, "Deleted: " + name, Toast.LENGTH_SHORT).show();
+    }
+
+    // Returns {name, pkg|null} sorted by name, app-linked profiles first
+    private List<String[]> getAllProfiles() {
+        SharedPreferences prefs = getSharedPreferences("autotapper_profiles", Context.MODE_PRIVATE);
+        List<String[]> result = new ArrayList<>();
+        for (String key : prefs.getAll().keySet()) {
+            if (!key.startsWith("profile_")) continue;
+            String n = key.substring("profile_".length());
+            result.add(new String[]{n, getProfilePackage(n)});
+        }
+        result.sort((a, b) -> {
+            // Current app's profiles sort first
+            boolean aMatch = currentForegroundPackage != null && currentForegroundPackage.equals(a[1]);
+            boolean bMatch = currentForegroundPackage != null && currentForegroundPackage.equals(b[1]);
+            if (aMatch != bMatch) return aMatch ? -1 : 1;
+            return a[0].compareTo(b[0]);
+        });
+        return result;
+    }
+
+    private String getProfilePackage(String name) {
+        String json = getSharedPreferences("autotapper_profiles", Context.MODE_PRIVATE)
+                .getString("profile_" + name, null);
+        if (json == null || json.startsWith("[")) return null; // old array format has no pkg
+        try { return new JSONObject(json).optString("pkg", null); }
+        catch (JSONException e) { return null; }
+    }
+
+    private void saveProfile(String name, String pkg) {
         try {
-            JSONArray array = new JSONArray();
+            JSONArray targets = new JSONArray();
             for (TapTarget t : tapTargets) {
                 JSONObject obj = new JSONObject();
                 obj.put("x", t.x);
                 obj.put("y", t.y);
                 obj.put("delayMs", t.delayMs);
                 obj.put("index", t.index);
-                array.put(obj);
+                targets.put(obj);
             }
+            JSONObject root = new JSONObject();
+            root.put("targets", targets);
+            if (pkg != null) root.put("pkg", pkg);
             getSharedPreferences("autotapper_profiles", Context.MODE_PRIVATE)
-                    .edit().putString("profile_" + name, array.toString()).apply();
+                    .edit().putString("profile_" + name, root.toString()).apply();
+            currentProfileName = name;
         } catch (JSONException e) {
             Toast.makeText(this, "Save failed", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void relinkProfile(String name, String newPkg) {
+        String json = getSharedPreferences("autotapper_profiles", Context.MODE_PRIVATE)
+                .getString("profile_" + name, null);
+        if (json == null) return;
+        try {
+            JSONObject root = json.startsWith("[")
+                    ? new JSONObject().put("targets", new JSONArray(json))
+                    : new JSONObject(json);
+            if (newPkg != null) root.put("pkg", newPkg); else root.remove("pkg");
+            getSharedPreferences("autotapper_profiles", Context.MODE_PRIVATE)
+                    .edit().putString("profile_" + name, root.toString()).apply();
+            String label = newPkg != null
+                    ? "Linked to " + getAppDisplayName(newPkg) : "Unlinked";
+            Toast.makeText(this, label, Toast.LENGTH_SHORT).show();
+        } catch (JSONException e) {
+            Toast.makeText(this, "Failed", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -478,6 +690,11 @@ public class GameAutomationService extends AccessibilityService {
             return;
         }
         try {
+            // Support both old (plain array) and new ({pkg, targets}) formats
+            JSONArray array = json.startsWith("[")
+                    ? new JSONArray(json)
+                    : new JSONObject(json).getJSONArray("targets");
+
             hideDelayEditor();
             activeIndex = -1;
             for (View pinView : pinViews) windowManager.removeView(pinView);
@@ -485,7 +702,6 @@ public class GameAutomationService extends AccessibilityService {
             pinViews.clear();
             pinParamsList.clear();
 
-            JSONArray array = new JSONArray(json);
             int half = dpToPx(28);
             for (int i = 0; i < array.length(); i++) {
                 JSONObject obj = array.getJSONObject(i);
@@ -517,11 +733,22 @@ public class GameAutomationService extends AccessibilityService {
                 attachPinTouchListener(pinView, pinParams, target);
                 windowManager.addView(pinView, pinParams);
             }
+            currentProfileName = name;
             Toast.makeText(this, "Loaded: " + name, Toast.LENGTH_SHORT).show();
             if (!tapTargets.isEmpty()) setActivePin(0);
             else updatePrevNextVisibility();
         } catch (JSONException e) {
             Toast.makeText(this, "Load failed", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String getAppDisplayName(String packageName) {
+        try {
+            return getPackageManager()
+                    .getApplicationLabel(getPackageManager().getApplicationInfo(packageName, 0))
+                    .toString();
+        } catch (PackageManager.NameNotFoundException e) {
+            return packageName;
         }
     }
 
@@ -568,7 +795,16 @@ public class GameAutomationService extends AccessibilityService {
         return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
-    @Override public void onAccessibilityEvent(AccessibilityEvent event) {}
+    @Override
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+        if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+        CharSequence pkg = event.getPackageName();
+        if (pkg == null) return;
+        String packageName = pkg.toString();
+        if (packageName.equals(getPackageName())) return;
+        if (packageName.equals(currentForegroundPackage)) return;
+        currentForegroundPackage = packageName;
+    }
     @Override public void onInterrupt() {}
 
     @Override

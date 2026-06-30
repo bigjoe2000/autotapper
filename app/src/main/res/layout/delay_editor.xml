@@ -5,10 +5,19 @@
     android:background="@drawable/rounded_menu_bg"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="8dp"
+    android:paddingStart="4dp"
     android:paddingEnd="4dp"
     android:paddingTop="4dp"
     android:paddingBottom="4dp">
+
+    <!-- Drag handle — touch here to move the editor -->
+    <ImageView
+        android:id="@+id/drag_handle"
+        android:layout_width="28dp"
+        android:layout_height="40dp"
+        android:paddingEnd="4dp"
+        android:src="@drawable/ic_drag_handle"
+        android:contentDescription="Drag" />
 
     <TextView
         android:layout_width="wrap_content"

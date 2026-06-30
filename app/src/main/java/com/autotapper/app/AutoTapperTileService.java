@@ -1,6 +1,7 @@
 package com.autotapper.app;
 
 import android.content.Intent;
+import android.os.Build;
 import android.provider.Settings;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
@@ -22,6 +23,9 @@ public class AutoTapperTileService extends TileService {
             return;
         }
         svc.toggleOverlay();
+        // Update the tile directly — requestListeningState is unreliable
+        // when the QS panel is still open after the tap.
+        syncTileState();
     }
 
     private void syncTileState() {
@@ -30,17 +34,20 @@ public class AutoTapperTileService extends TileService {
         GameAutomationService svc = GameAutomationService.instance;
         if (svc == null) {
             tile.setState(Tile.STATE_UNAVAILABLE);
-            tile.setLabel(getString(R.string.tile_label));
-            tile.setSubtitle(getString(R.string.tile_subtitle_disabled));
+            setSubtitleCompat(tile, getString(R.string.tile_subtitle_disabled));
         } else if (svc.isOverlayVisible) {
             tile.setState(Tile.STATE_ACTIVE);
-            tile.setLabel(getString(R.string.tile_label));
-            tile.setSubtitle(getString(R.string.tile_subtitle_on));
+            setSubtitleCompat(tile, getString(R.string.tile_subtitle_on));
         } else {
             tile.setState(Tile.STATE_INACTIVE);
-            tile.setLabel(getString(R.string.tile_label));
-            tile.setSubtitle(getString(R.string.tile_subtitle_off));
+            setSubtitleCompat(tile, getString(R.string.tile_subtitle_off));
         }
         tile.updateTile();
+    }
+
+    private void setSubtitleCompat(Tile tile, String subtitle) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            tile.setSubtitle(subtitle);
+        }
     }
 }
