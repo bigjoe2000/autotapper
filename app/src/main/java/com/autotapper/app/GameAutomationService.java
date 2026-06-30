@@ -277,10 +277,10 @@ public class GameAutomationService extends AccessibilityService {
             pinViews.get(i).setAlpha(on ? 0.3f : (i == activeIndex ? 1.0f : 0.45f));
             windowManager.updateViewLayout(pinViews.get(i), pinParamsList.get(i));
         }
-        if (delayEditorAdded) {
-            if (on) delayEditorParams.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
-            else    delayEditorParams.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
-            windowManager.updateViewLayout(delayEditorView, delayEditorParams);
+        if (on) {
+            hideDelayEditor();
+        } else {
+            updateDelayEditorPosition();
         }
     }
 
