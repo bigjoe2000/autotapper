@@ -52,6 +52,11 @@ public class GameAutomationService extends AccessibilityService {
     private boolean isRunning = false;
     private boolean isNavigateMode = false;
     private ImageButton btnNavigate;
+
+    private enum MenuEdge { LEFT, RIGHT, TOP, BOTTOM }
+    private MenuEdge menuEdge = MenuEdge.RIGHT;
+    private boolean menuIsHorizontal = false;
+
     private Runnable nextTapRunnable;
 
     private ImageButton btnAdd;
@@ -128,6 +133,106 @@ public class GameAutomationService extends AccessibilityService {
         });
 
         windowManager.addView(floatingMenu, menuParams);
+        attachMenuDragListener();
+    }
+
+    private void attachMenuDragListener() {
+        View handle = floatingMenu.findViewById(R.id.menu_drag_handle);
+        final float[] startTouchX = {0};
+        final float[] startTouchY = {0};
+        final int[] startParamsX = {0};
+        final int[] startParamsY = {0};
+
+        handle.setOnTouchListener((v, event) -> {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN: {
+                    // Convert gravity-relative position to absolute TOP|START coords once
+                    int[] loc = new int[2];
+                    floatingMenu.getLocationOnScreen(loc);
+                    menuParams.gravity = Gravity.TOP | Gravity.START;
+                    menuParams.x = loc[0];
+                    menuParams.y = loc[1];
+                    windowManager.updateViewLayout(floatingMenu, menuParams);
+                    startTouchX[0] = event.getRawX();
+                    startTouchY[0] = event.getRawY();
+                    startParamsX[0] = menuParams.x;
+                    startParamsY[0] = menuParams.y;
+                    return true;
+                }
+                case MotionEvent.ACTION_MOVE: {
+                    menuParams.x = startParamsX[0] + (int) (event.getRawX() - startTouchX[0]);
+                    menuParams.y = startParamsY[0] + (int) (event.getRawY() - startTouchY[0]);
+                    windowManager.updateViewLayout(floatingMenu, menuParams);
+                    // Flip orientation live as the menu crosses edge thresholds
+                    int sw2 = getResources().getDisplayMetrics().widthPixels;
+                    int sh2 = getResources().getDisplayMetrics().heightPixels;
+                    int cx2 = menuParams.x + floatingMenu.getWidth() / 2;
+                    int cy2 = menuParams.y + floatingMenu.getHeight() / 2;
+                    float dL2 = cx2, dR2 = sw2 - cx2, dT2 = cy2, dB2 = sh2 - cy2;
+                    float min2 = Math.min(Math.min(dL2, dR2), Math.min(dT2, dB2));
+                    boolean wantsHoriz = (min2 == dT2 || min2 == dB2);
+                    if (wantsHoriz != menuIsHorizontal) applyMenuOrientation(wantsHoriz);
+                    return true;
+                }
+                case MotionEvent.ACTION_UP: {
+                    int sw = getResources().getDisplayMetrics().widthPixels;
+                    int sh = getResources().getDisplayMetrics().heightPixels;
+                    int mw = floatingMenu.getWidth();
+                    int mh = floatingMenu.getHeight();
+                    int cx = menuParams.x + mw / 2;
+                    int cy = menuParams.y + mh / 2;
+                    float dL = cx, dR = sw - cx, dT = cy, dB = sh - cy;
+                    float min = Math.min(Math.min(dL, dR), Math.min(dT, dB));
+                    if (min == dR) {
+                        menuEdge = MenuEdge.RIGHT;
+                        menuParams.x = sw - mw;
+                        menuParams.y = Math.max(0, Math.min(menuParams.y, sh - mh));
+                    } else if (min == dL) {
+                        menuEdge = MenuEdge.LEFT;
+                        menuParams.x = 0;
+                        menuParams.y = Math.max(0, Math.min(menuParams.y, sh - mh));
+                    } else if (min == dT) {
+                        menuEdge = MenuEdge.TOP;
+                        menuParams.x = Math.max(0, Math.min(menuParams.x, sw - mw));
+                        menuParams.y = 0;
+                    } else {
+                        menuEdge = MenuEdge.BOTTOM;
+                        menuParams.x = Math.max(0, Math.min(menuParams.x, sw - mw));
+                        menuParams.y = sh - mh;
+                    }
+                    applyMenuOrientation(menuEdge == MenuEdge.TOP || menuEdge == MenuEdge.BOTTOM);
+                    windowManager.updateViewLayout(floatingMenu, menuParams);
+                    updateDelayEditorPosition();
+                    return true;
+                }
+            }
+            return false;
+        });
+    }
+
+    private void applyMenuOrientation(boolean horiz) {
+        if (horiz == menuIsHorizontal) return;
+        menuIsHorizontal = horiz;
+        ((LinearLayout) floatingMenu).setOrientation(horiz ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+
+        View dragHandle = floatingMenu.findViewById(R.id.menu_drag_handle);
+        LinearLayout.LayoutParams dhLp = (LinearLayout.LayoutParams) dragHandle.getLayoutParams();
+        dhLp.width  = horiz ? dpToPx(20) : dpToPx(48);
+        dhLp.height = horiz ? dpToPx(48) : dpToPx(20);
+        dragHandle.setLayoutParams(dhLp);
+
+        LinearLayout.LayoutParams rowLp = (LinearLayout.LayoutParams) prevNextRow.getLayoutParams();
+        rowLp.width  = horiz ? LinearLayout.LayoutParams.WRAP_CONTENT : LinearLayout.LayoutParams.MATCH_PARENT;
+        rowLp.height = horiz ? LinearLayout.LayoutParams.MATCH_PARENT : LinearLayout.LayoutParams.WRAP_CONTENT;
+        prevNextRow.setLayoutParams(rowLp);
+        for (int i = 0; i < prevNextRow.getChildCount(); i++) {
+            View child = prevNextRow.getChildAt(i);
+            LinearLayout.LayoutParams clp = (LinearLayout.LayoutParams) child.getLayoutParams();
+            clp.width  = horiz ? dpToPx(48) : 0;
+            clp.height = dpToPx(48);
+            clp.weight = horiz ? 0 : 1;
+            child.setLayoutParams(clp);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -222,11 +327,35 @@ public class GameAutomationService extends AccessibilityService {
         }
         WindowManager.LayoutParams pinParams = pinParamsList.get(activeIndex);
 
-        int screenWidth = getResources().getDisplayMetrics().widthPixels;
-        // Keep editor clear of the right sidebar (~56dp wide) plus a small gap
-        int rightBound = screenWidth - dpToPx(72) - dpToPx(210);
-        int x = Math.max(0, Math.min(pinParams.x, rightBound));
+        int sw = getResources().getDisplayMetrics().widthPixels;
+        int sh = getResources().getDisplayMetrics().heightPixels;
+        int editorW = dpToPx(210);
+        int editorH = dpToPx(48);
+        int menuSide = dpToPx(72);   // menu footprint on left/right edge
+        int menuBar  = dpToPx(260);  // menu footprint on top/bottom edge
+
+        int x = pinParams.x;
+        // Prefer below pin; flip above if that would clip the bottom
         int y = pinParams.y + dpToPx(60);
+        if (y + editorH > sh) y = pinParams.y - dpToPx(60) - editorH;
+
+        switch (menuEdge) {
+            case RIGHT:
+                x = Math.max(0, Math.min(x, sw - menuSide - editorW));
+                break;
+            case LEFT:
+                x = Math.max(menuSide, Math.min(x, sw - editorW));
+                break;
+            case TOP:
+                x = Math.max(0, Math.min(x, sw - editorW));
+                y = Math.max(menuBar, y);
+                break;
+            case BOTTOM:
+                x = Math.max(0, Math.min(x, sw - editorW));
+                y = Math.min(y, sh - menuBar - editorH);
+                break;
+        }
+        y = Math.max(0, Math.min(y, sh - editorH));
 
         delayEditorParams.x = x;
         delayEditorParams.y = y;

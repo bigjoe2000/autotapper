@@ -14,6 +14,14 @@
         android:contentDescription="@string/add_pin"
         android:src="@drawable/ic_add" />
 
+    <ImageView
+        android:id="@+id/menu_drag_handle"
+        android:layout_width="48dp"
+        android:layout_height="20dp"
+        android:alpha="0.5"
+        android:contentDescription="Drag to move menu"
+        android:src="@drawable/ic_drag_handle" />
+
     <ImageButton
         android:id="@+id/btn_navigate"
         android:layout_width="48dp"
