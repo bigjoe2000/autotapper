@@ -953,6 +953,7 @@ public class GameAutomationService extends AccessibilityService {
         if (packageName.equals(getPackageName())) return;
         if (packageName.equals(currentForegroundPackage)) return;
         currentForegroundPackage = packageName;
+        if (isRunning) stopMacro();
     }
     @Override public void onInterrupt() {}
 
