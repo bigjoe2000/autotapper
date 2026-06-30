@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AutoTapper</string>
+    <string name="accessibility_service_label">AutoTapper Accessibility Service</string>
+    <string name="accessibility_service_description">AutoTapper uses accessibility services to automate screen taps for game automation.</string>
+    <string name="main_instructions">Enable AutoTapper in Accessibility Settings to use the floating tap automation overlay.\n\nOnce enabled, a control bar will appear on screen. Use + to add tap targets, ▶ to start the automation loop, and ⚙ to save/load profiles.</string>
+    <string name="open_accessibility_settings">Open Accessibility Settings</string>
+    <string name="tile_label">AutoTapper</string>
+    <string name="tile_subtitle_on">Overlay on</string>
+    <string name="tile_subtitle_off">Overlay off</string>
+    <string name="tile_subtitle_disabled">Enable in Accessibility</string>
+    <string name="add_pin">Add tap target pin</string>
+    <string name="start_stop">Start/Stop automation</string>
+    <string name="settings">Settings and profiles</string>
+</resources>

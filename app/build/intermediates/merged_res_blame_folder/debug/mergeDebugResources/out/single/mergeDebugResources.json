@@ -1,0 +1,94 @@
+[
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/drawable_ic_add.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/drawable/ic_add.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/drawable_ic_launcher_background.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/drawable_ic_play.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/drawable/ic_play.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/layout_dialog_settings.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/layout/dialog_settings.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/drawable_ic_settings.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/drawable/ic_settings.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.autotapper.app-debug-31:/drawable_ic_next.xml.flat",
+        "source": "com.autotapper.app-main-33:/drawable/ic_next.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/drawable_rounded_menu_bg.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/drawable/rounded_menu_bg.xml"
+    },
+    {
+        "merged": "com.autotapper.app-debug-31:/drawable_ic_prev.xml.flat",
+        "source": "com.autotapper.app-main-33:/drawable/ic_prev.xml"
+    },
+    {
+        "merged": "com.autotapper.app-debug-31:/drawable_ic_delete.xml.flat",
+        "source": "com.autotapper.app-main-33:/drawable/ic_delete.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/layout_activity_main.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.autotapper.app-debug-31:/layout_delay_editor.xml.flat",
+        "source": "com.autotapper.app-main-33:/layout/delay_editor.xml"
+    },
+    {
+        "merged": "com.autotapper.app-debug-31:/layout_target_pin.xml.flat",
+        "source": "com.autotapper.app-main-33:/layout/target_pin.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/drawable_circle_pin.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/drawable/circle_pin.xml"
+    },
+    {
+        "merged": "com.autotapper.app-debug-31:/drawable_tap_target_pin.xml.flat",
+        "source": "com.autotapper.app-main-33:/drawable/tap_target_pin.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/layout_floating_control_menu.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/layout/floating_control_menu.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.autotapper.app-debug-31:/layout_floating_control_menu.xml.flat",
+        "source": "com.autotapper.app-main-33:/layout/floating_control_menu.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/drawable_ic_stop.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/drawable/ic_stop.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/layout_target_pin.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/layout/target_pin.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/drawable_ic_tile.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/drawable/ic_tile.xml"
+    },
+    {
+        "merged": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-debug-31:/xml_clicker_service_config.xml.flat",
+        "source": "/Users/joe/.gradle/daemon/8.14.5/com.autotapper.app-main-33:/xml/clicker_service_config.xml"
+    }
+]

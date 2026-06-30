@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="56dp"
+    android:height="56dp"
+    android:viewportWidth="56"
+    android:viewportHeight="56">
+
+    <!-- Cursor arrow pointing toward circle (tip at top-left) -->
+    <path
+        android:fillColor="#FF5722"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M4,4 L4,20 L8,16 L12,24 L15,22 L11,14 L18,14 Z" />
+
+    <!-- Circle fill — center at (28,28), radius 14 -->
+    <path
+        android:fillColor="#FF5722"
+        android:pathData="M28,14 A14,14 0 1,0 28,42 A14,14 0 1,0 28,14 Z" />
+
+    <!-- Circle outline -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:pathData="M28,14 A14,14 0 1,0 28,42 A14,14 0 1,0 28,14 Z" />
+
+    <!-- Center dot marking exact tap point -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,26 A2,2 0 1,0 28,30 A2,2 0 1,0 28,26 Z" />
+
+</vector>

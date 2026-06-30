@@ -1,0 +1,50 @@
+[
+    {
+        "merged": "com.autotapper.app-merged_res-31:/xml_clicker_service_config.xml.flat",
+        "source": "com.autotapper.app-main-33:/xml/clicker_service_config.xml"
+    },
+    {
+        "merged": "com.autotapper.app-merged_res-31:/drawable_ic_add.xml.flat",
+        "source": "com.autotapper.app-main-33:/drawable/ic_add.xml"
+    },
+    {
+        "merged": "com.autotapper.app-merged_res-31:/drawable_ic_play.xml.flat",
+        "source": "com.autotapper.app-main-33:/drawable/ic_play.xml"
+    },
+    {
+        "merged": "com.autotapper.app-merged_res-31:/drawable_ic_tile.xml.flat",
+        "source": "com.autotapper.app-main-33:/drawable/ic_tile.xml"
+    },
+    {
+        "merged": "com.autotapper.app-merged_res-31:/drawable_circle_pin.xml.flat",
+        "source": "com.autotapper.app-main-33:/drawable/circle_pin.xml"
+    },
+    {
+        "merged": "com.autotapper.app-merged_res-31:/layout_floating_control_menu.xml.flat",
+        "source": "com.autotapper.app-main-33:/layout/floating_control_menu.xml"
+    },
+    {
+        "merged": "com.autotapper.app-merged_res-31:/layout_activity_main.xml.flat",
+        "source": "com.autotapper.app-main-33:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.autotapper.app-merged_res-31:/drawable_ic_settings.xml.flat",
+        "source": "com.autotapper.app-main-33:/drawable/ic_settings.xml"
+    },
+    {
+        "merged": "com.autotapper.app-merged_res-31:/drawable_rounded_menu_bg.xml.flat",
+        "source": "com.autotapper.app-main-33:/drawable/rounded_menu_bg.xml"
+    },
+    {
+        "merged": "com.autotapper.app-merged_res-31:/drawable_ic_stop.xml.flat",
+        "source": "com.autotapper.app-main-33:/drawable/ic_stop.xml"
+    },
+    {
+        "merged": "com.autotapper.app-merged_res-31:/layout_dialog_settings.xml.flat",
+        "source": "com.autotapper.app-main-33:/layout/dialog_settings.xml"
+    },
+    {
+        "merged": "com.autotapper.app-merged_res-31:/layout_target_pin.xml.flat",
+        "source": "com.autotapper.app-main-33:/layout/target_pin.xml"
+    }
+]
