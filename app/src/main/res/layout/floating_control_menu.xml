@@ -15,6 +15,15 @@
         android:src="@drawable/ic_add" />
 
     <ImageButton
+        android:id="@+id/btn_navigate"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:alpha="0.45"
+        android:background="@android:color/transparent"
+        android:contentDescription="Navigate"
+        android:src="@drawable/ic_navigate" />
+
+    <ImageButton
         android:id="@+id/btn_play"
         android:layout_width="48dp"
         android:layout_height="48dp"

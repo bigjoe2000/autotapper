@@ -50,6 +50,8 @@ public class GameAutomationService extends AccessibilityService {
     private final List<WindowManager.LayoutParams> pinParamsList = new ArrayList<>();
 
     private boolean isRunning = false;
+    private boolean isNavigateMode = false;
+    private ImageButton btnNavigate;
     private Runnable nextTapRunnable;
 
     private ImageButton btnAdd;
@@ -107,6 +109,9 @@ public class GameAutomationService extends AccessibilityService {
         prevNextRow = floatingMenu.findViewById(R.id.prev_next_row);
         btnPrev = floatingMenu.findViewById(R.id.btn_prev);
         btnNext = floatingMenu.findViewById(R.id.btn_next);
+
+        btnNavigate = floatingMenu.findViewById(R.id.btn_navigate);
+        btnNavigate.setOnClickListener(v -> setNavigateMode(!isNavigateMode));
 
         btnAdd.setOnClickListener(v -> addNewTargetPin());
         btnPlay.setOnClickListener(v -> {
@@ -263,7 +268,24 @@ public class GameAutomationService extends AccessibilityService {
     // Pins
     // -------------------------------------------------------------------------
 
+    private void setNavigateMode(boolean on) {
+        isNavigateMode = on;
+        btnNavigate.setAlpha(on ? 1.0f : 0.45f);
+        for (int i = 0; i < pinViews.size(); i++) {
+            if (on) pinParamsList.get(i).flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+            else    pinParamsList.get(i).flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+            pinViews.get(i).setAlpha(on ? 0.3f : (i == activeIndex ? 1.0f : 0.45f));
+            windowManager.updateViewLayout(pinViews.get(i), pinParamsList.get(i));
+        }
+        if (delayEditorAdded) {
+            if (on) delayEditorParams.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+            else    delayEditorParams.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+            windowManager.updateViewLayout(delayEditorView, delayEditorParams);
+        }
+    }
+
     private void addNewTargetPin() {
+        if (isNavigateMode) setNavigateMode(false);
         LayoutInflater inflater = LayoutInflater.from(this);
         View pinView = inflater.inflate(R.layout.target_pin, null);
 
@@ -381,6 +403,7 @@ public class GameAutomationService extends AccessibilityService {
     // -------------------------------------------------------------------------
 
     private void startMacro() {
+        if (isNavigateMode) setNavigateMode(false);
         if (tapTargets.isEmpty()) {
             Toast.makeText(this, "No pins set!", Toast.LENGTH_SHORT).show();
             return;
@@ -469,8 +492,6 @@ public class GameAutomationService extends AccessibilityService {
         String appDisplay = currentForegroundPackage != null
                 ? getAppDisplayName(currentForegroundPackage) : "(none)";
 
-        String msg = "Profile:  " + profileDisplay + "\nApp:  " + appDisplay;
-
         List<String> options = new ArrayList<>();
         options.add(currentProfileName != null ? "Save  —  " + currentProfileName : "Save");
         options.add("New profile");
@@ -478,8 +499,7 @@ public class GameAutomationService extends AccessibilityService {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this,
                 android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
-        builder.setTitle("Profiles");
-        builder.setMessage(msg);
+        builder.setTitle("Profile:  " + profileDisplay + "\nApp:  " + appDisplay);
         builder.setItems(options.toArray(new String[0]), (dialog, which) -> {
             if (which == 0) {
                 if (currentProfileName != null) {
