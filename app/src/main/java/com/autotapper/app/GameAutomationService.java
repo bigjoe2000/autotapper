@@ -6,6 +6,7 @@ import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.content.pm.PackageManager;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
@@ -68,6 +69,8 @@ public class GameAutomationService extends AccessibilityService {
 
     private String currentProfileName = null;
     private String currentForegroundPackage = null;
+    private String currentForegroundClass = null;
+    private boolean continueOnScreenChange = false;
 
     // Active pin & delay editor
     private int activeIndex = -1;
@@ -669,6 +672,11 @@ public class GameAutomationService extends AccessibilityService {
             layout.addView(cbLink);
         }
 
+        CheckBox cbContinue = new CheckBox(this);
+        cbContinue.setText("Allow tapping to continue on screen change");
+        cbContinue.setChecked(false);
+        layout.addView(cbContinue);
+
         AlertDialog.Builder builder = new AlertDialog.Builder(this,
                 android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
         builder.setTitle("New Profile");
@@ -678,6 +686,7 @@ public class GameAutomationService extends AccessibilityService {
             if (!name.isEmpty()) {
                 String pkg = (cbLink.getParent() != null && cbLink.isChecked())
                         ? currentForegroundPackage : null;
+                continueOnScreenChange = cbContinue.isChecked();
                 saveProfile(name, pkg);
                 Toast.makeText(this, "Created: " + name, Toast.LENGTH_SHORT).show();
             }
@@ -725,6 +734,8 @@ public class GameAutomationService extends AccessibilityService {
                 && currentForegroundPackage.equals(profilePkg);
         boolean canLink = currentForegroundPackage != null;
 
+        boolean profileContinues = getProfileContinueOnScreenChange(name);
+
         List<String> actions = new ArrayList<>();
         actions.add("Load");
         if (canLink) {
@@ -732,6 +743,9 @@ public class GameAutomationService extends AccessibilityService {
                     ? "Unlink from  " + getAppDisplayName(currentForegroundPackage)
                     : "Link to  " + getAppDisplayName(currentForegroundPackage));
         }
+        actions.add(profileContinues
+                ? "Screen change:  continue tapping"
+                : "Screen change:  stop tapping");
         actions.add("Delete");
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this,
@@ -745,6 +759,8 @@ public class GameAutomationService extends AccessibilityService {
                 relinkProfile(name, currentForegroundPackage);
             } else if (action.startsWith("Unlink")) {
                 relinkProfile(name, null);
+            } else if (action.startsWith("Screen change")) {
+                setProfileContinueOnScreenChange(name, !profileContinues);
             } else if (action.equals("Delete")) {
                 deleteProfile(name);
             }
@@ -804,6 +820,7 @@ public class GameAutomationService extends AccessibilityService {
             JSONObject root = new JSONObject();
             root.put("targets", targets);
             if (pkg != null) root.put("pkg", pkg);
+            root.put("continueOnScreenChange", continueOnScreenChange);
             getSharedPreferences("autotapper_profiles", Context.MODE_PRIVATE)
                     .edit().putString("profile_" + name, root.toString()).apply();
             currentProfileName = name;
@@ -831,6 +848,33 @@ public class GameAutomationService extends AccessibilityService {
         }
     }
 
+    private boolean getProfileContinueOnScreenChange(String name) {
+        String json = getSharedPreferences("autotapper_profiles", Context.MODE_PRIVATE)
+                .getString("profile_" + name, null);
+        if (json == null || json.startsWith("[")) return false;
+        try { return new JSONObject(json).optBoolean("continueOnScreenChange", false); }
+        catch (JSONException e) { return false; }
+    }
+
+    private void setProfileContinueOnScreenChange(String name, boolean value) {
+        String json = getSharedPreferences("autotapper_profiles", Context.MODE_PRIVATE)
+                .getString("profile_" + name, null);
+        if (json == null) return;
+        try {
+            JSONObject root = json.startsWith("[")
+                    ? new JSONObject().put("targets", new JSONArray(json))
+                    : new JSONObject(json);
+            root.put("continueOnScreenChange", value);
+            getSharedPreferences("autotapper_profiles", Context.MODE_PRIVATE)
+                    .edit().putString("profile_" + name, root.toString()).apply();
+            if (name.equals(currentProfileName)) continueOnScreenChange = value;
+            Toast.makeText(this, value ? "Will continue on screen change" : "Will stop on screen change",
+                    Toast.LENGTH_SHORT).show();
+        } catch (JSONException e) {
+            Toast.makeText(this, "Failed", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void loadProfile(String name) {
         String json = getSharedPreferences("autotapper_profiles", Context.MODE_PRIVATE)
                 .getString("profile_" + name, null);
@@ -840,9 +884,9 @@ public class GameAutomationService extends AccessibilityService {
         }
         try {
             // Support both old (plain array) and new ({pkg, targets}) formats
-            JSONArray array = json.startsWith("[")
-                    ? new JSONArray(json)
-                    : new JSONObject(json).getJSONArray("targets");
+            JSONObject root = json.startsWith("[") ? null : new JSONObject(json);
+            JSONArray array = root != null ? root.getJSONArray("targets") : new JSONArray(json);
+            continueOnScreenChange = root != null && root.optBoolean("continueOnScreenChange", false);
 
             hideDelayEditor();
             activeIndex = -1;
@@ -951,10 +995,50 @@ public class GameAutomationService extends AccessibilityService {
         if (pkg == null) return;
         String packageName = pkg.toString();
         if (packageName.equals(getPackageName())) return;
-        if (packageName.equals(currentForegroundPackage)) return;
+
+        String className = event.getClassName() != null ? event.getClassName().toString() : "";
+        boolean changed = !packageName.equals(currentForegroundPackage)
+                       || !className.equals(currentForegroundClass);
+        if (!changed) return;
+
         currentForegroundPackage = packageName;
-        if (isRunning) stopMacro();
+        currentForegroundClass = className;
+        if (isRunning && !continueOnScreenChange) stopMacro();
     }
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // Post so the view has been re-measured with the new screen dimensions before we reposition
+        mainHandler.post(() -> {
+            if (menuParams.gravity != (Gravity.TOP | Gravity.START)) return;
+            int sw = getResources().getDisplayMetrics().widthPixels;
+            int sh = getResources().getDisplayMetrics().heightPixels;
+            int mw = floatingMenu.getWidth();
+            int mh = floatingMenu.getHeight();
+            if (mw == 0 || mh == 0) return;
+            switch (menuEdge) {
+                case RIGHT:
+                    menuParams.x = sw - mw;
+                    menuParams.y = Math.max(0, Math.min(menuParams.y, sh - mh));
+                    break;
+                case LEFT:
+                    menuParams.x = 0;
+                    menuParams.y = Math.max(0, Math.min(menuParams.y, sh - mh));
+                    break;
+                case TOP:
+                    menuParams.x = Math.max(0, Math.min(menuParams.x, sw - mw));
+                    menuParams.y = 0;
+                    break;
+                case BOTTOM:
+                    menuParams.x = Math.max(0, Math.min(menuParams.x, sw - mw));
+                    menuParams.y = sh - mh;
+                    break;
+            }
+            windowManager.updateViewLayout(floatingMenu, menuParams);
+            updateDelayEditorPosition();
+        });
+    }
+
     @Override public void onInterrupt() {}
 
     @Override
